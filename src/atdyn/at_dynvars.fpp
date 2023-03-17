@@ -922,6 +922,14 @@ contains
       end if
     end if
 
+    if (ALLOCATED(dynvars%nm_amp) ) then
+      do i = 1, size(dynvars%nm_amp)
+        write(category(ifm),frmt_res) 'NM_AMP', i
+        values(ifm) = dynvars%nm_amp(i)
+        ifm = ifm+1
+      enddo
+    endif
+    
     if (etitle) then
 
       write(DynvarsOut,'(A,$)') title
