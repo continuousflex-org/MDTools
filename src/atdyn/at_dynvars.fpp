@@ -148,9 +148,18 @@ contains
     !
     if (present(dynamics)) then
       if ((dynamics%integrator == IntegratorVVER .or.      &
-           dynamics%integrator == IntegratorVVER_CG) .and. &
+           dynamics%integrator == IntegratorVVER_CG .or.   &
+           dynamics%integrator == IntegratorNMMD) .and.    &
            tpcontrol           == TpcontrolLangevin) then
         call alloc_dynvars(dynvars, DynvarsLangevin,natom, nproc_country)
+      end if
+    end if
+
+    ! setup nmmd
+    !
+    if (present(dynamics)) then
+      if (dynamics%integrator == IntegratorNMMD) then
+        call alloc_dynvars(dynvars, DynvarsNMMD, dynamics%nm_number)
       end if
     end if
 
@@ -486,7 +495,8 @@ contains
       ekin_new = 0.5_wp * ekin_new
 
     else if (dynamics%integrator == IntegratorVVER .or.       &
-             dynamics%integrator == IntegratorVVER_CG) then
+             dynamics%integrator == IntegratorVVER_CG .or.    &
+             dynamics%integrator == IntegratorNMMD) then
 
       do j = 1, natom
         rmsg = rmsg + force(1,j)**2 + force(2,j)**2 + force(3,j)**2

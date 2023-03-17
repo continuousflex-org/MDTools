@@ -1,8 +1,5 @@
 /* src/config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Defined if BD is used. */
-#undef BLACS
-
 /* c compiler version */
 #undef COMPILE_CC_VER
 
@@ -66,9 +63,6 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
-/* Define to 1 if you have the `mpi' library (-lmpi). */
-#undef HAVE_LIBMPI
-
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
@@ -107,12 +101,6 @@
 
 /* defined if Intel compiler is used. */
 #undef INTEL
-
-/* defined if INTERNAL LAPACK is used. */
-#undef INTERNAL_LAPACK
-
-/* defined if INTERNAL SCALAPACK is used. */
-#undef INTERNAL_SCALAPACK
 
 /* defined if K-computer compiler is used. */
 #undef KCOMP

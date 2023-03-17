@@ -15,6 +15,7 @@
 module at_dynamics_str_mod
 
   use constants_mod
+  use string_mod
 
   implicit none
   private
@@ -56,6 +57,11 @@ module at_dynamics_str_mod
     logical             :: esp_mm
     integer             :: calc_qm_period
     logical             :: avg_qm_charge
+    integer             :: nm_number
+    real(wp)            :: nm_mass
+    character(MaxFilename)     :: nm_file
+    character(MaxFilename)     :: nm_init
+    real(wp)            :: nm_dt
   end type s_dynamics
 
   ! parameters
@@ -65,10 +71,13 @@ module at_dynamics_str_mod
   integer,      public, parameter :: IntegratorBD2N = 4
   integer,      public, parameter :: IntegratorSDMP = 5
   integer,      public, parameter :: IntegratorVVER_CG = 6
+  integer,      public, parameter :: IntegratorNMMD = 7
 
-  character(*), public, parameter :: IntegratorTypes(6)  = &
+
+  character(*), public, parameter :: IntegratorTypes(7)  = &
                                       (/'LEAP   ','VVER   ','BDEM   ',&
-                                        'BD2N   ','SDMP   ','VVER_CG'/)
+                                        'BD2N   ','SDMP   ','VVER_CG',&
+                                        'NMMD   ' /)
 
 
   ! subroutines
@@ -116,6 +125,11 @@ contains
     dynamics%initial_value        = 0.0_wp
     dynamics%final_value          = 0.0_wp
     dynamics%random_restart       = .true.
+    dynamics%nm_number            = 10
+    dynamics%nm_mass              = 10
+    dynamics%nm_file              = ''
+    dynamics%nm_init              = ''
+    dynamics%nm_dt                = 0.001_wp
 
     return
 

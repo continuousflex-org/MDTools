@@ -50,14 +50,48 @@ module at_experiments_str_mod
     real(wp), allocatable :: bound_x(:), bound_y(:), bound_z(:)
   end type s_emfit
 
+  type, public :: s_emfit_img
+    ! Emfit Image
+    real(wp), allocatable :: target_img(:,:)      ! memory for target
+    real(wp), allocatable :: simulated_img(:,:)   ! memory for simulated map
+
+    real(wp), allocatable :: rot_coord(:,:)
+    integer , allocatable :: pixels(:,:)
+    real(wp), allocatable :: gaussians_saved(:,:,:)
+    real(wp), allocatable :: emfit_img_force(:,:)
+
+    integer               :: image_size
+    real(wp)              :: pixel_size 
+    real(wp)              :: roll_angle 
+    real(wp)              :: tilt_angle 
+    real(wp)              :: yaw_angle  
+    real(wp)              :: shift_x    
+    real(wp)              :: shift_y   
+
+    integer               :: period
+    real(wp)              :: sigma     
+    integer               :: cutoff   
+
+    real(wp)              :: rot_matrix(3,3)
+    real(wp)              :: inv_rot_matrix(3,3)
+
+  end type s_emfit_img
+
   ! structures
   type, public :: s_experiments
     logical                       :: do_emfit
+    integer                       :: emfit_type
     type(s_emfit)                 :: emfit
+    type(s_emfit_img)             :: emfit_img
   end type s_experiments
 
   ! parameters for allocatable variables
-  integer,      public, parameter :: ExperimentsEmfit  = 1
+  integer,      public, parameter :: ExperimentsEmfit = 1
+  integer,      public, parameter :: ExperimentsEmfitImg = 2
+
+  character(*), public, parameter :: ExperimentsTypes(2)  = (/&
+                                                          'VOLUME',&
+                                                          'IMAGE '/)
 
   ! subroutines
   public :: alloc_experiments
@@ -132,6 +166,34 @@ contains
       experiments%emfit%bound_z(0:var_size3)                = 0.0_wp
       experiments%emfit%ig(1:3,1:var_size4)                 = 0
 
+    case(ExperimentsEmfitImg)
+
+      if (allocated(experiments%emfit_img%target_img)) then
+        if (size(experiments%emfit_img%target_img(:,1)) == var_size1) return
+        deallocate(experiments%emfit_img%target_img,      &
+                   experiments%emfit_img%simulated_img,   &
+                   experiments%emfit_img%rot_coord,       &
+                   experiments%emfit_img%pixels,          &
+                   experiments%emfit_img%gaussians_saved, &
+                   experiments%emfit_img%emfit_img_force, &
+                   stat = dealloc_stat)
+      end if
+
+      allocate(experiments%emfit_img%target_img   (var_size1, var_size1), &
+               experiments%emfit_img%simulated_img(var_size1, var_size1), &
+               experiments%emfit_img%rot_coord    (3, var_size2),         &
+               experiments%emfit_img%pixels       (2, var_size2),         &
+               experiments%emfit_img%gaussians_saved(var_size1, var_size1, var_size2), & 
+               experiments%emfit_img%emfit_img_force(3, var_size2),         &     
+               stat = alloc_stat)
+
+      experiments%emfit_img%target_img   (1:var_size1, 1:var_size1) = 0.0_wp
+      experiments%emfit_img%simulated_img(1:var_size1, 1:var_size1) = 0.0_wp
+      experiments%emfit_img%rot_coord(1:3, 1:var_size2) = 0.0_wp
+      experiments%emfit_img%pixels(1:2, 1:var_size2) = 0
+      experiments%emfit_img%gaussians_saved(1:var_size1, 1:var_size1, 1:var_size2) = 0.0_wp
+      experiments%emfit_img%emfit_img_force(1:3, 1:var_size2) = 0.0_wp
+
     case default
 
       call error_msg('Alloc_Experiments> bad variable')
@@ -184,6 +246,18 @@ contains
                    stat = dealloc_stat)
       end if
 
+    case(ExperimentsEmfitImg)
+
+      if (allocated(experiments%emfit_img%target_img)) then
+        deallocate(experiments%emfit_img%target_img,      &
+                   experiments%emfit_img%simulated_img,   &
+                   experiments%emfit_img%rot_coord,       &
+                   experiments%emfit_img%pixels,          &
+                   experiments%emfit_img%gaussians_saved, &
+                   experiments%emfit_img%emfit_img_force, &
+                   stat = dealloc_stat)
+      end if
+
     case default
 
       call error_msg('Dealloc_Experiments> bad variable')
@@ -213,6 +287,7 @@ contains
 
 
     call dealloc_experiments(experiments, ExperimentsEmfit)
+    call dealloc_experiments(experiments, ExperimentsEmfitImg)
 
     return
 

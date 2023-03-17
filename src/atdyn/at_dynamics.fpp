@@ -18,6 +18,7 @@ module at_dynamics_mod
 
   use at_md_leapfrog_mod
   use at_md_vverlet_mod
+  use at_nmmd_mod
   use at_md_vverlet_cg_mod
   use at_output_mod
   use at_restraints_mod
@@ -42,6 +43,8 @@ module at_dynamics_mod
   use messages_mod
   use mpi_parallel_mod
   use constants_mod
+  use string_mod
+
 #ifdef HAVE_MPI_GENESIS
   use mpi
 #endif
@@ -86,6 +89,13 @@ module at_dynamics_mod
     integer          :: calc_qm_period   = 0
     logical          :: avg_qm_charge    = .false.
 
+    ! NMMD
+    integer             :: nm_number            = 10
+    real(wp)            :: nm_mass              = 10
+    character(MaxFilename)     :: nm_file       = ''
+    character(MaxFilename)     :: nm_init       = ''
+    real(wp)            :: nm_dt                =  0.001_wp
+
   end type s_dyn_info
 
   ! subroutines
@@ -121,7 +131,7 @@ contains
       case ('md')
 
         write(MsgOut,'(A)') '[DYNAMICS]'
-        write(MsgOut,'(A)') 'integrator    = LEAP      # [LEAP,VVER, VVER_CG]'
+        write(MsgOut,'(A)') 'integrator    = LEAP      # [LEAP,VVER, VVER_CG, NMMD]'
         write(MsgOut,'(A)') 'nsteps        = 100       # number of MD steps'
         write(MsgOut,'(A)') 'timestep      = 0.001     # timestep (ps)'
         write(MsgOut,'(A)') 'eneout_period = 10        # energy output period'
@@ -194,7 +204,7 @@ contains
       case ('md', 'remd', 'rpath')
 
         write(MsgOut,'(A)') '[DYNAMICS]'
-        write(MsgOut,'(A)') 'integrator    = LEAP      # [LEAP,VVER]'
+        write(MsgOut,'(A)') 'integrator    = LEAP      # [LEAP,VVER, NMMD]'
         write(MsgOut,'(A)') 'nsteps        = 100       # number of MD steps'
         write(MsgOut,'(A)') 'timestep      = 0.001     # timestep (ps)'
         write(MsgOut,'(A)') 'eneout_period = 10        # energy output period'
@@ -299,7 +309,16 @@ contains
                                dyn_info%dbox_y)
     call read_ctrlfile_real   (handle, Section, 'dbox_z',  &
                                dyn_info%dbox_z)
-
+    call read_ctrlfile_integer(handle, "NMMD", 'nm_number',       &
+                               dyn_info%nm_number)
+    call read_ctrlfile_real   (handle, "NMMD", 'nm_mass',         &  
+                               dyn_info%nm_mass)
+    call read_ctrlfile_string (handle, "NMMD", 'nm_file',         &
+                                dyn_info%nm_file)
+    call read_ctrlfile_string (handle, "NMMD", 'nm_init',         &
+                                dyn_info%nm_init)
+    call read_ctrlfile_real   (handle, "NMMD", 'nm_dt',           &
+                                dyn_info%nm_dt)                      
     call end_ctrlfile_section(handle)
 
 
@@ -389,6 +408,17 @@ contains
       else
         write(MsgOut,'(A)') '  esp_mm          =         no'
       end if
+
+      if (dyn_info%integrator == IntegratorNMMD) then
+        write(MsgOut,'(A)') 'Read_Ctrl_NMMD> Parameters of NMMD'
+        write(MsgOut,'(A20,I10)') '  nm_number       = ', dyn_info%nm_number
+        write(MsgOut,'(A20,F10.3)') '  nm_mass         = ', dyn_info%nm_mass
+        write(MsgOut,'(A20,F10.3)') '  nm_dt        = ', dyn_info%nm_dt
+        write(MsgOut,'(A20,A)') '  nm_file       = ', trim(dyn_info%nm_file)
+        write(MsgOut,'(A20,A)') '  nm_init     = ', trim(dyn_info%nm_init)
+        write(MsgOut,'(A)') ' '
+  
+      endif
 
       write(MsgOut,'(A)') ' '
     end if
@@ -559,7 +589,12 @@ contains
     dynamics%esp_mm           = dyn_info%esp_mm
     dynamics%calc_qm_period   = dyn_info%calc_qm_period
     dynamics%avg_qm_charge    = dyn_info%avg_qm_charge
-    
+    dynamics%nm_number        = dyn_info%nm_number    
+    dynamics%nm_mass          = dyn_info%nm_mass      
+    dynamics%nm_file          = dyn_info%nm_file      
+    dynamics%nm_init          = dyn_info%nm_init  
+    dynamics%nm_dt            = dyn_info%nm_dt 
+
     iseed = dyn_info%iseed
     if (rst%rstfile_type == RstfileTypeUndef .or. &
         rst%rstfile_type == RstfileTypeMin ) then
@@ -758,6 +793,11 @@ contains
       call vverlet_dynamics_cg (output, molecule, enefunc, dynvars, dynamics, &
                              pairlist, boundary, constraints, ensemble)
 
+    case (IntegratorNMMD)
+
+      call nmmd_dynamics (output, molecule, enefunc, dynvars, dynamics, &
+                              pairlist, boundary, constraints, ensemble)
+                              
     end select
 
     ! Close output files
